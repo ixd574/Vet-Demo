@@ -138,7 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showConsentPrompt() {
     addBotMessage(
-      "\uD83D\uDC4B Welcome to HealthCo Clinics!<br>We\u2019ll use the info you share to find the best care for you.<br>Do you consent to proceeding under our privacy policy?"
+      "\uD83D\uDC4B Welcome to Paws &amp; Claws Clinics!  \uD83D\uDC3E<br>We\u2019ll use the info you share to find the best care for you.<br>Do you consent to proceeding under our privacy policy?"
     );
     document.querySelectorAll('.button-row').forEach((el) => el.remove());
     const wrapper = document.createElement("div");
