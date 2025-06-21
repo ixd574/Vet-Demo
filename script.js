@@ -1075,7 +1075,7 @@ document.addEventListener("DOMContentLoaded", () => {
       state.petName = message;
       state.awaitingPetName = false;
       state.awaitingPetType = true;
-      addBotMessage(`What kind of animal is ${state.petName}? (dog, cat, rabbit…)`);
+      addBotMessage(`What kind of animal is it? (dog, cat, rabbit…)`);
       return;
     }
 
@@ -1083,7 +1083,7 @@ document.addEventListener("DOMContentLoaded", () => {
       state.petType = message;
       state.awaitingPetType = false;
       state.awaitingBreedAgeSex = true;
-      addBotMessage(`What's ${state.petName}\u2019s breed, age and sex? Also is it neutered/spayed?`);
+      addBotMessage(`What\u2019s ${state.petName}\u2019s breed, age, and sex? Also is it neutered/spayed?`);
       return;
     }
 
