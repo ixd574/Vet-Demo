@@ -59,9 +59,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const bookings = [];
 
   const CLARIFY_QUESTIONS = [
-    "How long have you had this issue?",
+    "How long has this been going on?",
     "Does it itch or cause pain?",
-    "Have you noticed any triggers or tried treatments?",
+    "Have you tried any treatments?",
+    "Any recent changes in diet or environment?",
+    "Is there discharge, bleeding, or odor?",
   ];
 
   function addUserMessage(message) {
@@ -193,15 +195,21 @@ document.addEventListener("DOMContentLoaded", () => {
       imageInput.click();
     });
 
-    skip.addEventListener('click', () => {
+    skip.addEventListener('click', async () => {
       row.remove();
       imagePromptRow = null;
       addUserMessage('Skip');
       state.awaitingImage = false;
-      state.clarifying = true;
-      state.clarifyIndex = 0;
-      state.clarifyAnswers = [];
-      askNextClarifyQuestion();
+      try {
+        const diag = await getDiagnosisFromClarifications(
+          state.lastSymptom,
+          state.clarifyAnswers
+        );
+        showFinalDiagnosis(diag);
+      } catch (err) {
+        console.error(err);
+        showFinalDiagnosis('unsure');
+      }
     });
   }
 
@@ -217,28 +225,47 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function finalizeClarification() {
     state.clarifying = false;
+    const convo = buildHistory();
+    let needsPhoto = false;
     try {
-      const diag = await getDiagnosisFromClarifications(
-        state.lastSymptom,
-        state.clarifyAnswers
-      );
-      const derm = DOCTORS.find((d) => d.specialty === 'Dermatologist');
-      state.selectedDoctor = derm;
-      state.waitingForSymptoms = false;
-      addBotMessage(
-        `Looks like ${diag} \u2014 but a dermatologist will give the final word. Let\u2019s book you in!`
-      );
-      askForLocation();
+      needsPhoto = await checkNeedPhoto(convo);
     } catch (err) {
       console.error(err);
-      const derm = DOCTORS.find((d) => d.specialty === 'Dermatologist');
-      state.selectedDoctor = derm;
-      state.waitingForSymptoms = false;
-      addBotMessage(
-        "A dermatologist will give the final word. Let’s book you in!"
-      );
-      askForLocation();
     }
+    if (needsPhoto) {
+      state.awaitingImage = true;
+      showImagePrompt();
+    } else {
+      try {
+        const diag = await getDiagnosisFromClarifications(
+          state.lastSymptom,
+          state.clarifyAnswers
+        );
+        showFinalDiagnosis(diag);
+      } catch (err) {
+        console.error(err);
+        showFinalDiagnosis('unsure');
+      }
+    }
+  }
+
+  function buildHistory() {
+    return (
+      `Symptom: ${state.lastSymptom}. ` +
+      state.clarifyAnswers
+        .map((a, i) => `Q${i + 1}: ${CLARIFY_QUESTIONS[i]} A: ${a}`)
+        .join(' ')
+    );
+  }
+
+  function showFinalDiagnosis(diag) {
+    const derm = DOCTORS.find((d) => d.specialty === 'Dermatologist');
+    state.selectedDoctor = derm;
+    state.waitingForSymptoms = false;
+    addBotMessage(
+      `Looks like ${diag} \u2014 but veterinarian will give the final word. Let\u2019s book your pet in!`
+    );
+    askForLocation();
   }
 
   async function getDiagnosisFromClarifications(symptom, answers) {
@@ -272,6 +299,42 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     throw new Error('diagnosis fetch failed');
+  }
+
+  async function getDiagnosisWithImage(imageData) {
+    const text = buildHistory();
+    const messages = [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text:
+              `${text} Based on this, what is the most likely skin diagnosis? Respond ONLY with JSON {"diagnosis":"text"}.`,
+          },
+          { type: 'image_url', image_url: { url: imageData } },
+        ],
+      },
+    ];
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o', messages }),
+    });
+    const data = await response.json();
+    if (response.ok) {
+      let content = data.choices?.[0]?.message?.content?.trim();
+      if (content) {
+        content = content.replace(/```json|```/g, '').trim();
+        try {
+          const parsed = JSON.parse(content);
+          if (parsed.diagnosis) return parsed.diagnosis;
+        } catch {
+          return content.split(/\n/)[0];
+        }
+      }
+    }
+    throw new Error('image diagnosis failed');
   }
 
   function clearChat() {
@@ -949,7 +1012,9 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener('click', () => {
       row.remove();
       const pet = state.petName ? state.petName : 'your pet';
-      addBotMessage(`Hello ${state.name || ''}. What symptoms is ${pet} experiencing?`);
+      addBotMessage(
+        `Thank you ${state.name || ''} for providing this information. What’s worrying you about ${pet}?`
+      );
       state.waitingForSymptoms = true;
     });
   }
@@ -1063,7 +1128,9 @@ document.addEventListener("DOMContentLoaded", () => {
       state.petName = message;
       state.awaitingPetName = false;
       state.waitingForSymptoms = true;
-      addBotMessage(`What symptoms is ${state.petName} experiencing?`);
+      addBotMessage(
+        `Thank you ${state.name} for providing this information. What’s worrying you about ${state.petName}?`
+      );
       return;
     }
 
@@ -1076,41 +1143,14 @@ document.addEventListener("DOMContentLoaded", () => {
       state.clarifyAnswers.push(message);
       askNextClarifyQuestion();
       return;
-    }
-
-      if (state.waitingForSymptoms) {
-        state.lastSymptom = message;
-        const dermWords = ["rash", "acne", "mole", "wound", "swelling", "cough"];
-        let needsPhoto = false;
-        try {
-          needsPhoto = await checkNeedPhoto(message);
-        } catch {}
-        if (needsPhoto || dermWords.some((w) => message.toLowerCase().includes(w))) {
-          state.awaitingImage = true;
-          showImagePrompt();
-          return;
-        }
-      try {
-        const result = await getRecommendation(message);
-        if (result.question && state.aiQuestions < 3) {
-          state.aiQuestions++;
-          addBotMessage(result.question);
-        } else if (result.doctor) {
-          state.selectedDoctor = DOCTORS.find((d) => d.name === result.doctor) || {
-            name: result.doctor,
-            specialty: result.specialty,
-            slots: result.slots,
-          };
-          state.waitingForSymptoms = false;
-          addBotMessage(`You may need a consultation with a ${state.selectedDoctor.specialty}.`);
-          askForLocation();
-        } else {
-          addBotMessage("Sorry, I couldn't understand. Could you rephrase?");
-        }
-      } catch (err) {
-        console.error(err);
-        addBotMessage(`Error: ${err.message}`);
-      }
+    } else if (state.waitingForSymptoms) {
+      state.lastSymptom = message;
+      state.waitingForSymptoms = false;
+      state.clarifying = true;
+      state.clarifyIndex = 0;
+      state.clarifyAnswers = [];
+      askNextClarifyQuestion();
+      return;
     } else if (state.waitingForSlot) {
       if (state.selectedDoctor.slots.includes(message)) {
         selectSlot(message, state.selectedDoctor);
@@ -1140,70 +1180,15 @@ document.addEventListener("DOMContentLoaded", () => {
       addUserImage(reader.result);
       const stopLoading = showAnalyzing();
       try {
-        const messages = [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text:
-                  `A patient describes: ${state.lastSymptom}. ` +
-                  "Examine the skin photo and briefly describe in one or two sentences what you see. " +
-                  "Respond ONLY with JSON {\"desc\":\"short description\", \"diff\": [\"Diag1\", \"Diag2\", \"Diag3\"]}.",
-              },
-              { type: "image_url", image_url: { url: reader.result } },
-            ],
-          },
-        ];
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: "gpt-4o", messages }),
-        });
-        const data = await response.json();
-        let diag = "unsure";
-        let desc = "";
-        if (response.ok) {
-          let content = data.choices?.[0]?.message?.content?.trim();
-          if (content) {
-            // remove Markdown code fences
-            content = content.replace(/```json|```/g, "").trim();
-            try {
-              const parsed = JSON.parse(content);
-              if (Array.isArray(parsed.diff) && parsed.diff.length) {
-                diag = parsed.diff[0];
-              }
-              if (typeof parsed.desc === "string") {
-                desc = parsed.desc.trim();
-              }
-            } catch {
-              const firstLine = content.split(/\n/)[0];
-              diag = firstLine.split(/[\.]/)[0];
-              desc = content;
-            }
-          }
-        }
+        const diag = await getDiagnosisWithImage(reader.result);
         stopLoading();
         state.awaitingImage = false;
-        const derm = DOCTORS.find((d) => d.specialty === "Dermatologist");
-        state.selectedDoctor = derm;
-        state.waitingForSymptoms = false;
-        const messageDesc = desc ? `${desc} ` : "";
-        addBotMessage(
-          `${messageDesc}Looks like ${diag} \u2014 but a dermatologist will give the final word. Let\u2019s book you in!`
-        );
-        askForLocation();
+        showFinalDiagnosis(diag);
       } catch (err) {
         console.error(err);
         stopLoading();
         state.awaitingImage = false;
-        addBotMessage(
-          "Error analyzing image. We'll book you with a dermatologist to be safe."
-        );
-        const derm = DOCTORS.find((d) => d.specialty === "Dermatologist");
-        state.selectedDoctor = derm;
-        state.waitingForSymptoms = false;
-        askForLocation();
+        showFinalDiagnosis('unsure');
       }
     };
     reader.readAsDataURL(file);
