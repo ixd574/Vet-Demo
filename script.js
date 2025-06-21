@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     { name: "Dr. Flores", specialty: "Gastroenterologist", slots: ["12:00 tomorrow", "18:00 tomorrow", "10:00 next Thursday"] },
   ];
 
-  const basePrompt = `You are an AI healthcare assistant. Ask the user up to 3 short follow-up questions to better understand their symptoms. When confident, recommend the best doctor from the provided list and include available slots. Respond ONLY in JSON like {"question":"string"} while gathering info or {"doctor":"Dr. Name","specialty":"specialty","slots":["time1","time2"...]}. Available doctors: ${DOCTORS.map(d => `${d.name} - ${d.specialty} times: ${d.slots.join(" ")}`).join("; ")}`;
+  const basePrompt = `You are an AI veterinary assistant. Ask the user up to 3 short follow-up questions to better understand their symptoms. When confident, recommend the best doctor from the provided list and include available slots. Respond ONLY in JSON like {"question":"string"} while gathering info or {"doctor":"Dr. Name","specialty":"specialty","slots":["time1","time2"...]}. Available doctors: ${DOCTORS.map(d => `${d.name} - ${d.specialty} times: ${d.slots.join(" ")}`).join("; ")}`;
 
   let conversation = [{ role: "system", content: basePrompt }];
   const chatMessages = document.getElementById("chat-messages");
@@ -41,6 +41,10 @@ document.addEventListener("DOMContentLoaded", () => {
     awaitingPolicy: false,
     aiQuestions: 0,
     name: "",
+    petName: "",
+    petType: "",
+    petBreedAgeSex: "",
+    petWeight: "",
     lastSymptom: "",
     userLocation: "",
     selectedInsurance: "",
@@ -48,6 +52,10 @@ document.addEventListener("DOMContentLoaded", () => {
     clarifying: false,
     clarifyIndex: 0,
     clarifyAnswers: [],
+    awaitingPetName: false,
+    awaitingPetType: false,
+    awaitingBreedAgeSex: false,
+    awaitingPetWeight: false,
     awaitingCoverageConfirm: false,
     awaitingPayment: false,
     awaitingContact: false,
@@ -138,7 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showConsentPrompt() {
     addBotMessage(
-      "\uD83D\uDC4B Welcome to HealthCo Clinics!<br>We\u2019ll use the info you share to find the best care for you.<br>Do you consent to proceeding under our privacy policy?"
+      "\uD83D\uDC4B Welcome to Paws &amp; Claws Clinics!  \uD83D\uDC3E<br>We\u2019ll use the info you share to find the best care for you.<br>Do you consent to proceeding under our privacy policy?"
     );
     document.querySelectorAll('.button-row').forEach((el) => el.remove());
     const wrapper = document.createElement("div");
@@ -293,10 +301,18 @@ document.addEventListener("DOMContentLoaded", () => {
     state.userLocation = '';
     state.aiQuestions = 0;
     state.name = "";
+    state.petName = "";
+    state.petType = "";
+    state.petBreedAgeSex = "";
+    state.petWeight = "";
     state.lastSymptom = "";
     state.clarifying = false;
     state.clarifyIndex = 0;
     state.clarifyAnswers = [];
+    state.awaitingPetName = false;
+    state.awaitingPetType = false;
+    state.awaitingBreedAgeSex = false;
+    state.awaitingPetWeight = false;
     conversation = [{ role: "system", content: basePrompt }];
     updateSummary();
     setTimeout(() => {
@@ -944,7 +960,8 @@ document.addEventListener("DOMContentLoaded", () => {
     scrollToBottom();
     btn.addEventListener('click', () => {
       row.remove();
-      addBotMessage(`Hello ${state.name || ''}. What symptoms are you experiencing?`);
+      const pet = state.petName ? state.petName : 'your pet';
+      addBotMessage(`Hello ${state.name || ''}. What symptoms is ${pet} experiencing?`);
       state.waitingForSymptoms = true;
     });
   }
@@ -1049,8 +1066,42 @@ document.addEventListener("DOMContentLoaded", () => {
     if (state.awaitingName) {
       state.name = message;
       state.awaitingName = false;
+      state.awaitingPetName = true;
+      addBotMessage(`Hello ${state.name}. What\u2019s your pet\u2019s name?`);
+      return;
+    }
+
+    if (state.awaitingPetName) {
+      state.petName = message;
+      state.awaitingPetName = false;
+      state.awaitingPetType = true;
+      addBotMessage(`What kind of animal is ${state.petName}? (dog, cat, rabbit…)`);
+      return;
+    }
+
+    if (state.awaitingPetType) {
+      state.petType = message;
+      state.awaitingPetType = false;
+      state.awaitingBreedAgeSex = true;
+      addBotMessage(`What's ${state.petName}\u2019s breed, age and sex? Also is it neutered/spayed?`);
+      return;
+    }
+
+    if (state.awaitingBreedAgeSex) {
+      state.petBreedAgeSex = message;
+      state.awaitingBreedAgeSex = false;
+      state.awaitingPetWeight = true;
+      addBotMessage(`Do you know ${state.petName}\u2019s weight?`);
+      return;
+    }
+
+    if (state.awaitingPetWeight) {
+      state.petWeight = message;
+      state.awaitingPetWeight = false;
       state.waitingForSymptoms = true;
-      addBotMessage(`Hello ${state.name}. What symptoms are you experiencing?`);
+      addBotMessage(
+        `Thank you ${state.name} for providing this information. What\u2019s worrying you about ${state.petName}?`
+      );
       return;
     }
 
