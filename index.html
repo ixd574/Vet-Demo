@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Appointment Assistant</title>
+    <link rel="stylesheet" href="styles.css" id="theme-link">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="tab_logo.ico">
+</head>
+<body>
+    <div class="app-container">
+        <div class="glass-panel sidebar">
+            <div class="logo">
+                <span class="logo-text">HealthCo</span>
+            </div>
+            <div class="booking-summary" id="booking-summary">
+                <h3>Your Appointments</h3>
+                <div class="summary-content">
+                    <p>No appointment yet</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="glass-panel chat-container">
+                <div class="chat-header">
+                    <h2>Healthcare AI Assistant</h2>
+                    <div class="chat-actions">
+                        <button id="theme-button">
+                            <img id="theme-icon" src="/white.svg" alt="Theme Icon" width="24" height="24" >
+                        </button>
+                        <button id="clear-chat" class="glass-button small">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages will be added here -->
+                </div>
+
+                <div class="chat-input-container">
+                    <input type="file" id="image-input" accept="image/*" capture="environment" style="display:none">
+                    <input type="text" id="user-input" placeholder="Type your message here..." class="chat-input">
+                    <button id="send-button" class="send-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-panel options-container" id="options-container">
+                <!-- Dynamic options will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates for dynamic content -->
+    <template id="appointment-options-template">
+        <div class="appointment-options">
+            <div class="options-header">
+                <h3>Available times with <span class="doctor-name"></span></h3>
+            </div>
+            <div class="options-buttons slot-list">
+                <!-- Buttons added dynamically -->
+            </div>
+        </div>
+    </template>
+
+    <script src="script.js"></script>
+</body>
+</html>
