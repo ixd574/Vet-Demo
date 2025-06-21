@@ -42,6 +42,9 @@ document.addEventListener("DOMContentLoaded", () => {
     aiQuestions: 0,
     name: "",
     petName: "",
+    petType: "",
+    petBreedAgeSex: "",
+    petWeight: "",
     lastSymptom: "",
     userLocation: "",
     selectedInsurance: "",
@@ -50,6 +53,9 @@ document.addEventListener("DOMContentLoaded", () => {
     clarifyIndex: 0,
     clarifyAnswers: [],
     awaitingPetName: false,
+    awaitingPetType: false,
+    awaitingBreedAgeSex: false,
+    awaitingPetWeight: false,
     awaitingCoverageConfirm: false,
     awaitingPayment: false,
     awaitingContact: false,
@@ -296,11 +302,17 @@ document.addEventListener("DOMContentLoaded", () => {
     state.aiQuestions = 0;
     state.name = "";
     state.petName = "";
+    state.petType = "";
+    state.petBreedAgeSex = "";
+    state.petWeight = "";
     state.lastSymptom = "";
     state.clarifying = false;
     state.clarifyIndex = 0;
     state.clarifyAnswers = [];
     state.awaitingPetName = false;
+    state.awaitingPetType = false;
+    state.awaitingBreedAgeSex = false;
+    state.awaitingPetWeight = false;
     conversation = [{ role: "system", content: basePrompt }];
     updateSummary();
     setTimeout(() => {
@@ -1062,6 +1074,30 @@ document.addEventListener("DOMContentLoaded", () => {
     if (state.awaitingPetName) {
       state.petName = message;
       state.awaitingPetName = false;
+      state.awaitingPetType = true;
+      addBotMessage(`What kind of animal is ${state.petName}? (dog, cat, rabbit…)`);
+      return;
+    }
+
+    if (state.awaitingPetType) {
+      state.petType = message;
+      state.awaitingPetType = false;
+      state.awaitingBreedAgeSex = true;
+      addBotMessage(`What's ${state.petName}\u2019s breed, age and sex? Also is it neutered/spayed?`);
+      return;
+    }
+
+    if (state.awaitingBreedAgeSex) {
+      state.petBreedAgeSex = message;
+      state.awaitingBreedAgeSex = false;
+      state.awaitingPetWeight = true;
+      addBotMessage(`Do you know ${state.petName}\u2019s weight?`);
+      return;
+    }
+
+    if (state.awaitingPetWeight) {
+      state.petWeight = message;
+      state.awaitingPetWeight = false;
       state.waitingForSymptoms = true;
       addBotMessage(`What symptoms is ${state.petName} experiencing?`);
       return;
